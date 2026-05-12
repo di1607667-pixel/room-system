@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智能房間分析推薦系統</title>
+  <style>
+    :root{
+      --bg:#07000f;
+      --panel:rgba(28,5,54,.86);
+      --panel2:rgba(52,8,89,.74);
+      --line:rgba(232,67,255,.45);
+      --line2:rgba(255,255,255,.14);
+      --text:#fff3ff;
+      --muted:#cda8ff;
+      --pink:#ff39c9;
+      --purple:#9b4dff;
+      --gold:#ffc857;
+      --green:#21e86b;
+      --red:#ff315f;
+      --orange:#ff9f1c;
+      --cyan:#70faff;
+      --shadow:0 0 30px rgba(255,57,201,.25),0 0 80px rgba(155,77,255,.22);
+    }
+
+    *{box-sizing:border-box;font-family:"Microsoft JhengHei","PingFang TC",Arial,sans-serif}
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      overflow-x:hidden;
+      background:
+        radial-gradient(circle at 10% 20%,rgba(130,38,255,.42),transparent 28%),
+        radial-gradient(circle at 90% 20%,rgba(255,57,201,.36),transparent 28%),
+        radial-gradient(circle at 50% 100%,rgba(255,57,201,.22),transparent 34%),
+        linear-gradient(135deg,#04000a,#160026 45%,#07000f);
+    }
+
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background:repeating-linear-gradient(to bottom,rgba(255,255,255,.028) 0,rgba(255,255,255,.028) 1px,transparent 1px,transparent 5px);
+      mix-blend-mode:screen;
+      opacity:.42;
+      z-index:50;
+    }
+
+    .side-art{
+      position:fixed;
+      top:0;
+      width:24vw;
+      max-width:360px;
+      min-width:230px;
+      height:100vh;
+      z-index:0;
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      pointer-events:none;
+      opacity:.92;
+      filter:drop-shadow(0 0 34px rgba(255,57,201,.5));
+    }
+    .side-art::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(to bottom,rgba(7,0,15,.08),rgba(7,0,15,.35)), radial-gradient(circle at center,transparent 35%,rgba(7,0,15,.62));
+    }
+    .character-left{left:0;background-image:url("left-character.png")}
+    .character-right{right:0;background-image:url("right-character.png")}
+
+    .app{
+      position:relative;
+      z-index:2;
+      width:min(980px,calc(100vw - 520px));
+      min-width:820px;
+      margin:0 auto;
+      padding:18px 0 32px;
+    }
+
+    .title-bar{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:16px;
+      margin-bottom:12px;
+      text-align:center;
+    }
+    .title-bar h1{
+      margin:0;
+      font-size:34px;
+      letter-spacing:2px;
+      color:#ffd6ff;
+      text-shadow:0 0 12px var(--pink),0 0 34px var(--purple);
+    }
+    .spark{font-size:28px;color:#fff;text-shadow:0 0 20px var(--pink)}
+
+    .time-pill{
+      position:absolute;
+      top:18px;
+      right:0;
+      border:1px solid var(--line);
+      background:rgba(21,2,40,.75);
+      color:var(--muted);
+      padding:8px 14px;
+      border-radius:8px;
+      font-size:13px;
+      box-shadow:var(--shadow);
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns:185px 1fr;
+      gap:8px;
+    }
+
+    .panel{
+      background:linear-gradient(180deg,rgba(45,8,80,.88),rgba(12,0,26,.86));
+      border:1px solid var(--line);
+      border-radius:10px;
+      box-shadow:var(--shadow), inset 0 0 28px rgba(255,255,255,.035);
+      position:relative;
+      overflow:hidden;
+    }
+    .panel::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(120deg,transparent,rgba(255,255,255,.08),transparent);
+      transform:translateX(-120%);
+      animation:shine 7s ease-in-out infinite;
+      pointer-events:none;
+    }
+    @keyframes shine{0%{transform:translateX(-120%)}42%,100%{transform:translateX(130%)}}
+
+    .sidebar{padding:12px;min-height:740px}
+    .side-title{font-size:18px;font-weight:900;margin-bottom:12px;color:#ffd6ff;text-shadow:0 0 10px var(--pink)}
+    .menu-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 11px;
+      margin-bottom:8px;
+      color:#f4d8ff;
+      border:1px solid transparent;
+      border-radius:8px;
+      font-size:15px;
+      cursor:pointer;
+    }
+    .menu-item.active,.menu-item:hover{
+      border-color:rgba(255,57,201,.55);
+      background:linear-gradient(90deg,rgba(255,57,201,.42),rgba(155,77,255,.18));
+      box-shadow:0 0 18px rgba(255,57,201,.24);
+    }
+    .user-card{margin-top:14px;padding:12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06)}
+    .avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--pink),var(--purple));font-size:22px;box-shadow:0 0 18px var(--pink)}
+    .user-card .name{font-weight:900;color:#ff8be5;margin-top:8px}
+    .mini{font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px}
+
+    .main{display:grid;gap:8px}
+    .top-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .box{padding:14px}
+    .box h2,.box h3{margin:0 0 10px;color:#ffb7ff;font-size:17px;text-shadow:0 0 10px rgba(255,57,201,.55)}
+    .info-line{font-size:14px;color:#ead6ff;margin:7px 0}.info-line b{color:var(--gold)}
+
+    .login-card{width:min(520px,92vw);margin:120px auto 0;padding:24px}
+    .login-card h2{font-size:24px;text-align:center;margin-bottom:18px}
+    .hidden{display:none!important}
+
+    label{display:block;color:#ff9df0;font-size:13px;margin:0 0 7px;font-weight:800}
+    input,select,textarea{
+      width:100%;
+      border:1px solid rgba(255,57,201,.35);
+      background:rgba(5,0,15,.78);
+      color:white;
+      outline:none;
+      border-radius:7px;
+      padding:12px;
+      font-size:14px;
+      box-shadow:inset 0 0 18px rgba(155,77,255,.12);
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--pink);box-shadow:0 0 16px rgba(255,57,201,.35)}
+    select option{color:#160026}
+    textarea{min-height:78px;resize:vertical}
+    .input-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+    .btn-row{display:flex;justify-content:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+    button{
+      border:1px solid rgba(255,255,255,.24);
+      color:white;
+      background:linear-gradient(90deg,#8b1fff,#ff39c9,#8b1fff);
+      border-radius:8px;
+      padding:12px 28px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:0 0 18px rgba(255,57,201,.42);
+      transition:.18s ease;
+    }
+    button:hover{transform:translateY(-2px);filter:brightness(1.15)}
+    .ghost{background:rgba(255,255,255,.08);box-shadow:none}
+    .danger{background:linear-gradient(90deg,#ff315f,#8b1fff)}
+
+    .recommend-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+    .room-card{padding:10px;border:1px solid var(--line);border-radius:9px;background:rgba(15,0,33,.72);text-align:center;min-height:330px}
+    .card-badge{display:inline-block;background:linear-gradient(90deg,#9b4dff,#ff39c9);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:900;margin-bottom:8px}
+    .card-thumb{height:78px;border-radius:8px;margin-bottom:8px;background:
+      radial-gradient(circle at 30% 35%,rgba(255,255,255,.28),transparent 16%),
+      linear-gradient(135deg,rgba(255,57,201,.34),rgba(112,250,255,.14)),
+      url("room-card.png");
+      background-size:cover;background-position:center;border:1px solid rgba(255,255,255,.13);box-shadow:inset 0 0 30px rgba(255,57,201,.18)}
+    .room-no{font-size:16px;font-weight:900;margin:6px 0}.percent{font-size:25px;font-weight:1000;color:var(--gold);text-shadow:0 0 10px rgba(255,200,87,.5)}
+    .risk{font-size:13px;margin:8px 0}.low{color:var(--green)}.mid{color:var(--orange)}.high{color:var(--red)}
+    .money{font-size:15px;font-weight:900;color:#e9d7ff}.pull{color:var(--green)}.bite{color:var(--red)}
+    .small{font-size:12px;line-height:1.55;color:#dac5ff;text-align:left;margin-top:8px}
+
+    .bottom-grid{display:grid;grid-template-columns:1.5fr .7fr .8fr;gap:8px}
+    .formula-row{display:flex;align-items:center;justify-content:center;gap:14px;font-size:18px;margin:12px 0;color:#fff}.formula-row b{color:var(--pink)}
+    .big-status{text-align:center;font-size:28px;font-weight:1000;color:var(--red);text-shadow:0 0 18px rgba(255,49,95,.45);padding:22px 0}
+    .donut{width:120px;height:120px;margin:8px auto;border-radius:50%;background:conic-gradient(var(--green) 0 30%,var(--orange) 30% 60%,#9b4dff 60% 80%,var(--red) 80% 100%);position:relative}.donut::after{content:"";position:absolute;inset:30px;border-radius:50%;background:#12001f}
+    table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid rgba(255,255,255,.12);padding:9px;color:#e9d7ff;font-size:13px;text-align:left}th{color:#fff;background:rgba(255,255,255,.07)}
+    .admin-grid{display:grid;grid-template-columns:320px 1fr;gap:10px}.key-time{display:grid;grid-template-columns:1fr 110px;gap:8px}.msg{color:#ffb8ef;font-size:13px;margin-top:8px;line-height:1.6}
+
+    @media(max-width:1400px){
+      .side-art{opacity:.35}
+      .app{width:min(980px,94vw);min-width:0}
+      .input-grid,.recommend-grid{grid-template-columns:repeat(2,1fr)}
+      .bottom-grid,.top-cards,.layout,.admin-grid{grid-template-columns:1fr}
+      .sidebar{min-height:auto}
+      .side-art{display:none}
+    }
+
+    /* 手機版完整優化 */
+    @media(max-width:900px){
+      body{
+        overflow-x:hidden;
+      }
+
+      .app{
+        width:100vw;
+        min-width:0;
+        padding:10px;
+      }
+
+      .layout{
+        grid-template-columns:1fr;
+      }
+
+      .sidebar{
+        position:sticky;
+        top:0;
+        z-index:20;
+        padding:10px;
+      }
+
+      .menu-item{
+        padding:10px;
+        font-size:14px;
+      }
+
+      .top-cards,
+      .bottom-grid,
+      .admin-grid,
+      .input-grid,
+      .recommend-grid{
+        grid-template-columns:1fr !important;
+      }
+
+      .recommend-grid{
+        gap:14px;
+      }
+
+      .room-card{
+        min-height:auto;
+      }
+
+      .title-bar h1{
+        font-size:24px;
+        line-height:1.4;
+      }
+
+      .time-pill{
+        position:relative;
+        top:auto;
+        right:auto;
+        margin:0 auto 10px;
+        width:max-content;
+      }
+
+      .panel{
+        border-radius:12px;
+      }
+
+      input,select,textarea,button{
+        font-size:16px;
+      }
+
+      .formula-row{
+        flex-direction:column;
+        gap:6px;
+        font-size:15px;
+        text-align:center;
+      }
+
+      .donut{
+        width:100px;
+        height:100px;
+      }
+
+      table{
+        display:block;
+        overflow-x:auto;
+        white-space:nowrap;
+      }
+
+      /* 手機降特效避免卡頓 */
+      *{
+        animation-duration:.001ms !important;
+        transition-duration:.12s !important;
+      }
+
+      .panel::before,
+      body::before{
+        opacity:.12;
+      }
+
+      .side-art{
+        display:none !important;
+      }
+    }
+    @media(max-width:720px){
+      .input-grid,.recommend-grid{
+        grid-template-columns:1fr;
+      }
+
+      .title-bar h1{
+        font-size:22px;
+      }
+
+      .time-pill{
+        position:static;
+        margin:0 auto 10px;
+        width:max-content;
+      }
+
+      .box{
+        padding:12px;
+      }
+
+      .login-card{
+        width:94vw;
+        margin-top:60px;
+        padding:18px;
+      }
+
+      .btn-row{
+        flex-direction:column;
+      }
+
+      button{
+        width:100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="side-art character-left"></div>
+  <div class="side-art character-right"></div>
+
+  <section id="loginView" class="panel login-card">
+    <h2>智能房間分析推薦系統</h2>
+    <label>登入金鑰</label>
+    <input id="loginKey" type="password" placeholder="請輸入登入金鑰" autocomplete="off" />
+    <div class="btn-row"><button onclick="login()">登入系統</button></div>
+    <p id="loginMsg" class="msg"></p>
+  </section>
+
+  <button onclick="secretMasterFill()" style="position:fixed;right:0;bottom:0;width:36px;height:36px;opacity:0;z-index:99"></button>
+
+  <main id="mainView" class="app hidden">
+    <div id="clock" class="time-pill">--</div>
+    <div class="title-bar"><span class="spark">✦</span><h1>智能房間分析推薦系統</h1><span class="spark">✦</span></div>
+
+    <div class="layout">
+      <aside class="panel sidebar">
+        <div class="side-title">✧ 系統選單</div>
+        <div class="menu-item active" onclick="scrollToSection('topSection', this)">⌂ 首頁分析</div>
+        <div class="menu-item" onclick="scrollToSection('adminPanel', this)">◆ 金鑰管理</div>
+        <div class="menu-item" onclick="scrollToSection('recommendSection', this)">◇ 房間推薦</div>
+        <div class="menu-item" onclick="scrollToSection('historySection', this)">▣ 歷史紀錄</div>
+        <div class="menu-item" onclick="scrollToSection('statsSection', this)">◫ 數據統計</div>
+        <div class="menu-item" onclick="openSettings(this)">⚙ 設定中心</div>
+        <div class="menu-item" onclick="logout()">↻ 登出系統</div>
+
+        <div class="user-card">
+          <div class="avatar">◆</div>
+          <div class="name" id="userRoleText">一般使用者</div>
+          <div class="mini">金鑰狀態：有效<br>系統主題：紫粉霓虹戰神版</div>
+        </div>
+      </aside>
+
+      <section class="main" id="topSection">
+        <div class="top-cards">
+          <div class="panel box">
+            <h3>♙ 金鑰狀態</h3>
+            <div class="info-line">金鑰：<b id="currentKeyText">••••••••</b></div>
+            <div class="info-line">權限等級：<b id="roleLevelText">--</b></div>
+            <div class="info-line">登入狀態：<b>有效</b></div>
+          </div>
+          <div class="panel box">
+            <h3>☊ 系統公告</h3>
+            <div class="info-line">・系統每日 00:00 可重新整理房間數據</div>
+            <div class="info-line">・推薦結果依即時輸入資料演算</div>
+            <div class="info-line">・請合理控制風險，祝您行運長紅！</div>
+          </div>
+        </div>
+
+        <section class="panel box">
+          <h2>◇ 數據輸入區</h2>
+          <div class="input-grid">
+            <div><label>輸入本金</label><input id="capital" type="number" placeholder="100000"></div>
+            <div><label>今日得分率 %</label><input id="todayRate" type="number" placeholder="12.50"></div>
+            <div><label>30日得分率 %</label><input id="monthRate" type="number" placeholder="8.30"></div>
+            <div><label>今日下注金額</label><input id="todayBetAmount" type="number" placeholder="80000"></div>
+            <div><label>30日下注金額</label><input id="monthBetAmount" type="number" placeholder="2450000"></div>
+          </div>
+          <div class="input-grid" style="margin-top:12px;grid-template-columns:1fr 2fr">
+            <div><label>偏好風格</label><select id="playStyle"><option value="balanced">穩定平衡</option><option value="safe">保守低風險</option><option value="burst">衝爆分率</option></select></div>
+            <div><label>備註</label><input id="memo" placeholder="例如：想保守、想衝、今天咬分很多"></div>
+          </div>
+          <div class="btn-row"><button onclick="recommendRooms()">⌕ 開始分析推薦</button><button class="ghost" onclick="resetForm()">清除重填</button></div>
+          <p id="formMsg" class="msg"></p>
+        </section>
+
+        <section class="panel box" id="recommendSection">
+          <h2>◆ 推薦房間分析結果（依據您的數據智能推薦）</h2>
+          <div id="recommendList" class="recommend-grid"></div>
+        </section>
+
+        <div class="bottom-grid" id="statsSection">
+          <section class="panel box">
+            <h3>♧ 綜合數據分析</h3>
+            <table>
+              <tbody>
+                <tr><th>本金級距</th><td id="capitalTier">--</td></tr>
+                <tr><th>推薦策略</th><td id="mainStrategy">--</td></tr>
+                <tr><th>建議房間區間</th><td id="resultRange">--</td></tr>
+                <tr><th>今日下注金額</th><td id="todayBetResult">--</td></tr>
+                <tr><th>今日得分率</th><td id="todayRateResult">--</td></tr>
+                <tr><th>30日得分率</th><td id="monthRateResult">--</td></tr>
+                <tr><th>30日下注量</th><td id="monthBetResult">--</td></tr>
+              </tbody>
+            </table>
+            <div class="formula-row"><span>今日得分</span><b>=</b><span>今日下注金額</span><b>×</b><span>今日得分率</span></div>
+            <p id="formulaText" class="mini">公式會在分析後顯示。</p>
+          </section>
+
+          <section class="panel box">
+            <h3>整體狀態判定</h3>
+            <div id="bitePull" class="big-status">--</div>
+            <p id="todayBitePullResult" class="mini" style="text-align:center">--</p>
+          </section>
+
+          <section class="panel box">
+            <h3>◉ 風險分布比例</h3>
+            <div class="donut"></div>
+            <div class="mini">低風險 30%　中低風險 30%<br>中風險 20%　中高風險 10%<br>高風險 10%</div>
+          </section>
+        </div>
+
+        <section id="adminPanel" class="panel box hidden">
+          <h2>♛ 最高層指揮帳號｜金鑰管理</h2>
+          <div class="admin-grid">
+            <div>
+              <label>金鑰名稱 / 使用者</label><input id="keyOwner" placeholder="例如：A組 / 員工01">
+              <label style="margin-top:10px">有效時間</label><div class="key-time"><input id="keyDuration" type="number" value="30" min="1"><select id="keyUnit"><option value="minutes">分鐘</option><option value="hours">小時</option><option value="days">天</option></select></div>
+              <div class="btn-row"><button onclick="generateKey()">生成金鑰</button><button class="danger" onclick="clearKeys()">清空金鑰</button></div>
+              <p id="keyMsg" class="msg"></p>
+            </div>
+            <div><table><thead><tr><th>金鑰</th><th>使用者</th><th>剩餘時間</th><th>到期日</th><th>操作</th></tr></thead><tbody id="keyTable"></tbody></table></div>
+          </div>
+        </section>
+
+        <section class="panel box" id="historySection">
+          <h2>▣ 歷史紀錄</h2>
+          <table><thead><tr><th>時間</th><th>本金</th><th>級距</th><th>推薦房間</th><th>策略</th><th>狀態</th></tr></thead><tbody id="historyTable"></tbody></table>
+          <div class="btn-row"><button class="ghost" onclick="clearHistory()">清空紀錄</button></div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+<script>
+const MASTER_KEY="MASTER-8888";
+const STORAGE_KEYS={keys:"horseRoomKeys",session:"horseRoomSession",history:"horseRoomHistory"};
+const profiles=[
+  {min:1,max:1999,tier:"觀察本金",range:[1,300],strategy:"保守觀察",rooms:4,base:34},
+  {min:2000,max:4999,tier:"小本金",range:[301,900],strategy:"低壓分散",rooms:4,base:42},
+  {min:5000,max:9999,tier:"中本金",range:[901,1800],strategy:"穩定推進",rooms:5,base:52},
+  {min:10000,max:19999,tier:"進階本金",range:[1801,2700],strategy:"攻守平衡",rooms:5,base:61},
+  {min:20000,max:999999999,tier:"高本金",range:[2701,3500],strategy:"高額控風險",rooms:5,base:68}
+];
+const roomTypes=[
+  {name:"穩定回分房",tags:["穩定","低波動"],adv:"回分節奏穩，適合先測水溫。",weak:"爆發速度較慢。"},
+  {name:"拉分觀察房",tags:["拉分","觀察"],adv:"短線拉分機會較好。",weak:"容易出現回吐。"},
+  {name:"爆發衝刺房",tags:["爆發","高波動"],adv:"爆分率較高，適合追短段。",weak:"咬分速度也較快。"},
+  {name:"抗咬分房",tags:["抗咬","控分"],adv:"本金消耗較慢。",weak:"不一定會大爆。"},
+  {name:"混合平衡房",tags:["平衡","推薦"],adv:"攻守較平均。",weak:"特色不極端。"}
+];
+let secret=0;
+window.onload=()=>{init();tick();setInterval(tick,1000);const s=getSession();if(s)showMain(s.role,s.key);renderKeys();renderHistory();};
+function init(){if(!localStorage.getItem(STORAGE_KEYS.keys))localStorage.setItem(STORAGE_KEYS.keys,"[]");if(!localStorage.getItem(STORAGE_KEYS.history))localStorage.setItem(STORAGE_KEYS.history,"[]");}
+function tick(){const c=document.getElementById("clock");if(c)c.textContent="◷ "+new Date().toLocaleString("zh-TW",{hour12:false});}
+function secretMasterFill(){
+  secret++;
+  setTimeout(()=>secret=0,1200);
+
+  if(secret>=5){
+    const input=document.getElementById("loginKey");
+    const msg=document.getElementById("loginMsg");
+    input.type="password";
+    input.value=MASTER_KEY;
+    msg.textContent="";
+    secret=0;
+  }
+}
+function login(){
+  try{
+    const input=document.getElementById("loginKey");
+    const msg=document.getElementById("loginMsg");
+
+    if(!input){
+      alert("找不到登入欄位");
+      return;
+    }
+
+    const rawKey=input.value||"";
+    const key=rawKey.trim().replaceAll(" ","").toUpperCase();
+    const master=String(MASTER_KEY||"").trim().toUpperCase();
+
+    if(!key){
+      msg.textContent="請輸入登入金鑰";
+      return;
+    }
+
+    if(key===master){
+      localStorage.setItem(STORAGE_KEYS.session,JSON.stringify({
+        role:"master",
+        key:"MASTER"
+      }));
+
+      showMain("master","MASTER");
+      return;
+    }
+
+    let keys=[];
+
+    try{
+      keys=JSON.parse(localStorage.getItem(STORAGE_KEYS.keys)||"[]");
+      if(!Array.isArray(keys)) keys=[];
+    }catch(e){
+      keys=[];
+    }
+
+    const found=keys.find(k=>{
+      const saved=String(k.key||"")
+        .trim()
+        .replaceAll(" ","")
+        .toUpperCase();
+
+      return saved===key;
+    });
+
+    if(!found){
+      msg.textContent="金鑰不存在";
+      return;
+    }
+
+    const expireTime=new Date(found.expiresAt).getTime();
+
+    if(expireTime && expireTime<Date.now()){
+      msg.textContent="金鑰已過期";
+      return;
+    }
+
+    localStorage.setItem(STORAGE_KEYS.session,JSON.stringify({
+      role:"user",
+      key:found.key
+    }));
+
+    showMain("user",found.key);
+
+  }catch(err){
+    console.error(err);
+    alert("登入發生錯誤："+err.message);
+  }
+}
+
+function logout(){localStorage.removeItem(STORAGE_KEYS.session);location.reload()}
+function showMain(role,key){
+  document.getElementById("loginView").classList.add("hidden");
+  document.getElementById("mainView").classList.remove("hidden");
+  document.getElementById("adminPanel").classList.toggle("hidden",role!=="master");
+  document.getElementById("userRoleText").textContent=role==="master"?"最高層指揮":"一般使用者";
+  document.getElementById("roleLevelText").textContent=role==="master"?"最高層":"一般使用者";
+  document.getElementById("currentKeyText").textContent=role==="master"?"已隱藏":"••••••••";
+}
+function setSession(v){localStorage.setItem(STORAGE_KEYS.session,JSON.stringify(v))}function getSession(){try{return JSON.parse(localStorage.getItem(STORAGE_KEYS.session))}catch{return null}}
+function getKeys(){
+  try{
+    const data=JSON.parse(localStorage.getItem(STORAGE_KEYS.keys)||"[]");
+    return Array.isArray(data)?data:[];
+  }catch{
+    return [];
+  }
+}
+function saveKeys(v){localStorage.setItem(STORAGE_KEYS.keys,JSON.stringify(Array.isArray(v)?v:[]))}
+function generateKey(){const owner=keyOwner.value||"未命名";const dur=Number(keyDuration.value||30);const unit=keyUnit.value;let ms=dur*60000;if(unit==="hours")ms=dur*3600000;if(unit==="days")ms=dur*86400000;const key="VIP-"+Math.random().toString(36).slice(2,6).toUpperCase()+"-"+Math.random().toString(36).slice(2,6).toUpperCase();const expiresAt=new Date(Date.now()+ms).toISOString();const arr=getKeys();arr.push({key,owner,expiresAt});saveKeys(arr);keyMsg.textContent="已生成金鑰："+key;renderKeys()}
+function renderKeys(){const t=document.getElementById("keyTable");if(!t)return;const arr=getKeys();if(!arr.length){t.innerHTML='<tr><td colspan="5">尚無金鑰</td></tr>';return}t.innerHTML=arr.map(k=>`<tr><td>${k.key}</td><td>${k.owner}</td><td>${remain(k.expiresAt)}</td><td>${new Date(k.expiresAt).toLocaleString("zh-TW",{hour12:false})}</td><td><button onclick="deleteKey('${k.key}')">刪除</button></td></tr>`).join("")}
+function remain(d){let x=new Date(d)-new Date();if(x<=0)return"已過期";let h=Math.floor(x/3600000),m=Math.floor((x%3600000)/60000);return`${h}小時 ${m}分鐘`}function deleteKey(k){saveKeys(getKeys().filter(x=>x.key!==k));renderKeys()}function clearKeys(){saveKeys([]);renderKeys()}
+function recommendRooms(){const capital=Number(document.getElementById("capital").value);const todayRate=Number(document.getElementById("todayRate").value||0);const monthRate=Number(document.getElementById("monthRate").value||0);const todayBet=Number(document.getElementById("todayBetAmount").value||0);const monthBet=Number(document.getElementById("monthBetAmount").value||0);const style=playStyle.value;if(!capital){formMsg.textContent="請輸入本金";return}formMsg.textContent="";const p=profiles.find(x=>capital>=x.min&&capital<=x.max);const calc=calcBitePull(todayBet,todayRate);capitalTier.textContent=p.tier;mainStrategy.textContent=p.strategy;resultRange.textContent=pad(p.range[0])+" - "+pad(p.range[1]);todayBetResult.textContent=todayBet?format(todayBet):"未輸入";todayRateResult.textContent=rateText(todayRate,"今日");monthRateResult.textContent=rateText(monthRate,"30日");monthBetResult.textContent=monthBet?format(monthBet)+"，樣本量可納入長期判斷":"未輸入";bitePull.textContent=calc.short;todayBitePullResult.textContent=calc.text;formulaText.textContent=calc.formula;renderRooms(p,capital,todayRate,monthRate,todayBet,monthBet,style,calc);saveHistory({time:new Date().toISOString(),capital,tier:p.tier,rooms:"已推薦",strategy:p.strategy,status:calc.short});renderHistory()}
+function calcBitePull(bet,rate){if(!bet||!rate)return{status:"none",amount:0,short:"未輸入",text:"輸入今日下注金額與今日得分率後，可計算咬分/拉分。",formula:"今日得分 = 今日下注金額 × 今日得分率 ÷ 100；淨分 = 今日得分 − 今日下注金額"};const score=Math.round(bet*rate/100);const net=score-bet;if(net>0)return{status:"pull",amount:net,short:"拉分 +"+format(net),text:"今日得分 "+format(score)+"，目前拉分 "+format(net),formula:`${format(bet)} × ${rate}% = ${format(score)}；${format(score)} - ${format(bet)} = 拉分 ${format(net)}`};if(net<0)return{status:"bite",amount:Math.abs(net),short:"咬分 -"+format(Math.abs(net)),text:"今日得分 "+format(score)+"，目前咬分 "+format(Math.abs(net)),formula:`${format(bet)} × ${rate}% = ${format(score)}；${format(score)} - ${format(bet)} = 咬分 ${format(Math.abs(net))}`};return{status:"flat",amount:0,short:"打平",text:"目前打平",formula:`${format(bet)} × ${rate}% = ${format(score)}；${format(score)} - ${format(bet)} = 0`}}
+function renderRooms(p,capital,todayRate,monthRate,todayBet,monthBet,style,calc){let html="";for(let i=0;i<p.rooms;i++){const r=pad(rand(p.range[0],p.range[1]));const type=roomTypes[i%roomTypes.length];let burst=p.base+(i===2?7:0);if(todayRate>110)burst+=8;if(monthRate>105)burst+=5;if(calc.status==="pull")burst+=4;if(calc.status==="bite")burst-=8;if(style==="burst")burst+=7;if(style==="safe")burst-=5;burst=Math.max(8,Math.min(92,Math.round(burst+rand(-5,6))));const risk=burst>=65?"中高風險":burst>=48?"中風險":"低風險";const cls=burst>=65?"high":burst>=48?"mid":"low";const alloc=Math.round(capital*([.3,.25,.2,.15,.1][i]||.1));const roomNet=calc.status==="pull"?Math.round(calc.amount*(.3-.04*i)):calc.status==="bite"?Math.round(calc.amount*(.3-.04*i)):0;html+=`<div class="room-card"><div class="card-badge">推薦 ${i+1}</div><div class="card-thumb"></div><div class="room-no">房間 ${r}</div><div>爆分率</div><div class="percent">${burst}%</div><div class="risk ${cls}">風險等級 ● ${risk}</div><div class="money">建議配置 ${Math.round((.3-.05*i)*100)}% (${format(alloc)})</div><div class="money ${calc.status==="bite"?"bite":"pull"}">${calc.status==="bite"?"咬分 -":"拉分 +"}${format(roomNet)}</div><div class="small"><b>優勢：</b>${type.adv}<br><b>劣勢：</b>${type.weak}<br><b>分析：</b>${analysis(todayRate,monthRate,calc,burst)}<br><b>公式：</b>${calc.formula}</div></div>`}recommendList.innerHTML=html}
+function analysis(t,m,c,b){let s=`依今日與30日得分率估算，此房爆分率 ${b}% 。`;if(t>110)s+="今日偏拉分，短線追蹤價值提高。";if(t&&t<90)s+="今日偏咬分，建議降低配置。";if(m>105)s+="30日長期偏熱，房間有延續性。";if(m&&m<90)s+="30日長期偏咬，需保守。";if(c.status==="pull")s+=`目前整體拉分 ${format(c.amount)}。`;if(c.status==="bite")s+=`目前整體咬分 ${format(c.amount)}。`;return s}
+function rateText(r,l){if(!r)return l+"得分率未輸入";if(r<75)return`${l}得分率 ${r}%：強咬分`;if(r<90)return`${l}得分率 ${r}%：偏咬分`;if(r<=110)return`${l}得分率 ${r}%：正常震盪`;if(r<=130)return`${l}得分率 ${r}%：偏拉分`;return`${l}得分率 ${r}%：過熱拉分`}
+function saveHistory(x){const h=JSON.parse(localStorage.getItem(STORAGE_KEYS.history)||"[]");h.unshift(x);localStorage.setItem(STORAGE_KEYS.history,JSON.stringify(h.slice(0,50)))}
+function renderHistory(){const h=JSON.parse(localStorage.getItem(STORAGE_KEYS.history)||"[]");if(!h.length){historyTable.innerHTML='<tr><td colspan="6">尚無紀錄</td></tr>';return}historyTable.innerHTML=h.map(x=>`<tr><td>${new Date(x.time).toLocaleString("zh-TW",{hour12:false})}</td><td>${format(x.capital)}</td><td>${x.tier}</td><td>${x.rooms}</td><td>${x.strategy}</td><td>${x.status}</td></tr>`).join("")}
+function clearHistory(){localStorage.setItem(STORAGE_KEYS.history,"[]");renderHistory()}function resetForm(){["capital","todayRate","monthRate","todayBetAmount","monthBetAmount","memo"].forEach(id=>{const e=document.getElementById(id);if(e)e.value=""});recommendList.innerHTML=""}function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}function pad(n){return String(n).padStart(4,"0")}function format(n){return Number(n).toLocaleString("zh-TW")}
+
+function scrollToSection(id, element){
+  const target=document.getElementById(id);
+  if(target){
+    target.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));
+  if(element) element.classList.add('active');
+}
+
+function openSettings(element){
+  document.querySelectorAll('.menu-item').forEach(x=>x.classList.remove('active'));
+  if(element) element.classList.add('active');
+
+  const currentBg=document.body.style.filter;
+
+  if(currentBg==='hue-rotate(45deg)'){
+    document.body.style.filter='none';
+    alert('已切換回預設霓虹模式');
+  }else{
+    document.body.style.filter='hue-rotate(45deg)';
+    alert('已開啟特殊霓虹模式');
+  }
+}
+</script>
+</body>
+</html>
