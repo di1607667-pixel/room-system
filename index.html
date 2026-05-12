@@ -231,7 +231,50 @@
     }
 
     /* 手機版完整優化 */
-    @media(max-width:900px){
+    .mobile-menu-btn{
+  display:none;
+}
+
+@media(max-width:900px){
+
+  .mobile-menu-btn{
+    display:flex;
+    position:fixed;
+    top:14px;
+    left:14px;
+    z-index:9999;
+    width:48px;
+    height:48px;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(135deg,#ff4fd8,#8f5bff);
+    color:white;
+    font-size:26px;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 0 20px rgba(255,0,200,.45);
+  }
+
+  .sidebar{
+    position:fixed !important;
+    left:-320px;
+    top:0;
+    width:280px;
+    height:100vh;
+    z-index:9998;
+    transition:.35s;
+    overflow-y:auto;
+  }
+
+  .sidebar.active{
+    left:0;
+  }
+
+  .layout{
+    grid-template-columns:1fr !important;
+  }
+
+@media(max-width:900px){
       body{
         overflow-x:hidden;
       }
@@ -361,9 +404,113 @@
         width:100%;
       }
     }
-  </style>
+  
+/* 手機版選單修正版：只收合左側選單，不隱藏其他系統內容 */
+@media(max-width:900px){
+  body{
+    overflow-x:hidden !important;
+  }
+
+  .app{
+    width:100vw !important;
+    min-width:0 !important;
+    padding:70px 10px 24px !important;
+  }
+
+  .layout{
+    display:block !important;
+  }
+
+  .main{
+    display:grid !important;
+    width:100% !important;
+    gap:10px !important;
+    position:relative !important;
+    z-index:1 !important;
+  }
+
+  .top-cards,
+  .bottom-grid,
+  .admin-grid,
+  .input-grid,
+  .recommend-grid{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+  }
+
+  .panel,
+  .box,
+  .room-card{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  .mobile-menu-btn{
+    display:flex !important;
+    position:fixed !important;
+    top:14px !important;
+    left:14px !important;
+    z-index:10000 !important;
+    width:48px !important;
+    height:48px !important;
+    padding:0 !important;
+    border:none !important;
+    border-radius:14px !important;
+    background:linear-gradient(135deg,#ff4fd8,#8f5bff) !important;
+    color:white !important;
+    font-size:26px !important;
+    align-items:center !important;
+    justify-content:center !important;
+    box-shadow:0 0 20px rgba(255,0,200,.45) !important;
+  }
+
+  .sidebar{
+    position:fixed !important;
+    left:-310px !important;
+    top:0 !important;
+    width:280px !important;
+    height:100vh !important;
+    min-height:100vh !important;
+    z-index:9999 !important;
+    overflow-y:auto !important;
+    transition:left .28s ease !important;
+  }
+
+  .sidebar.active{
+    left:0 !important;
+  }
+
+  .title-bar h1{
+    font-size:22px !important;
+    line-height:1.35 !important;
+  }
+
+  .time-pill{
+    position:fixed !important;
+    top:16px !important;
+    right:10px !important;
+    z-index:9997 !important;
+    font-size:11px !important;
+    padding:8px 10px !important;
+  }
+
+  input,select,textarea,button{
+    font-size:16px !important;
+  }
+
+  table{
+    display:block !important;
+    overflow-x:auto !important;
+    white-space:nowrap !important;
+  }
+}
+</style>
 </head>
 <body>
+
+<button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+☰
+</button>
   <div class="side-art character-left"></div>
   <div class="side-art character-right"></div>
 
@@ -651,6 +798,27 @@ function openSettings(element){
     alert('已開啟特殊霓虹模式');
   }
 }
+function toggleMobileMenu(){
+  document.querySelector('.sidebar')
+    .classList.toggle('active');
+}
+
+document.addEventListener('click',(e)=>{
+
+  const sidebar=document.querySelector('.sidebar');
+  const btn=document.querySelector('.mobile-menu-btn');
+
+  if(
+    window.innerWidth<=900 &&
+    sidebar &&
+    btn &&
+    !sidebar.contains(e.target) &&
+    !btn.contains(e.target)
+  ){
+    sidebar.classList.remove('active');
+  }
+});
+
 </script>
 </body>
 </html>
