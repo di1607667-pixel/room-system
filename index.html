@@ -762,7 +762,109 @@ function getKeys(){
   }
 }
 function saveKeys(v){localStorage.setItem(STORAGE_KEYS.keys,JSON.stringify(Array.isArray(v)?v:[]))}
-function generateKey(){const owner=keyOwner.value||"未命名";const dur=Number(keyDuration.value||30);const unit=keyUnit.value;let ms=dur*60000;if(unit==="hours")ms=dur*3600000;if(unit==="days")ms=dur*86400000;const key="VIP-"+Math.random().toString(36).slice(2,6).toUpperCase()+"-"+Math.random().toString(36).slice(2,6).toUpperCase();const expiresAt=new Date(Date.now()+ms).toISOString();const arr=getKeys();arr.push({key,owner,expiresAt});saveKeys(arr);keyMsg.textContent="已生成金鑰："+key;renderKeys()}
+function generateKey(){
+
+  try{
+
+    const owner =
+      (document.getElementById("keyOwner")?.value || "未命名")
+      .trim();
+
+    const dur = Math.max(
+      1,
+      Number(
+        document.getElementById("keyDuration")?.value || 30
+      )
+    );
+
+    const unit =
+      document.getElementById("keyUnit")?.value
+      || "minutes";
+
+    let ms = dur * 60000;
+
+    if(unit === "hours"){
+      ms = dur * 3600000;
+    }
+
+    if(unit === "days"){
+      ms = dur * 86400000;
+    }
+
+    const key =
+      "VIP-" +
+      Math.random()
+        .toString(36)
+        .slice(2,6)
+        .toUpperCase()
+      +
+      "-" +
+      Math.random()
+        .toString(36)
+        .slice(2,6)
+        .toUpperCase();
+
+    const expiresAt =
+      new Date(Date.now() + ms).toISOString();
+
+    let keys = [];
+
+    try{
+
+      keys = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.keys) || "[]"
+      );
+
+      if(!Array.isArray(keys)){
+        keys = [];
+      }
+
+    }catch(e){
+
+      keys = [];
+
+    }
+
+    const newKey = {
+
+      key: key.trim().toUpperCase(),
+
+      owner,
+
+      expiresAt,
+
+      createdAt:
+        new Date().toISOString()
+    };
+
+    keys.push(newKey);
+
+    localStorage.setItem(
+      STORAGE_KEYS.keys,
+      JSON.stringify(keys)
+    );
+
+    const msg =
+      document.getElementById("keyMsg");
+
+    if(msg){
+
+      msg.innerHTML =
+        `已生成金鑰：<b>${newKey.key}</b>`;
+
+    }
+
+    renderKeys();
+
+  }catch(err){
+
+    console.error(err);
+
+    alert(
+      "生成金鑰失敗：" + err.message
+    );
+  }
+}
 function renderKeys(){const t=document.getElementById("keyTable");if(!t)return;const arr=getKeys();if(!arr.length){t.innerHTML='<tr><td colspan="5">尚無金鑰</td></tr>';return}t.innerHTML=arr.map(k=>`<tr><td>${k.key}</td><td>${k.owner}</td><td>${remain(k.expiresAt)}</td><td>${new Date(k.expiresAt).toLocaleString("zh-TW",{hour12:false})}</td><td><button onclick="deleteKey('${k.key}')">刪除</button></td></tr>`).join("")}
 function remain(d){let x=new Date(d)-new Date();if(x<=0)return"已過期";let h=Math.floor(x/3600000),m=Math.floor((x%3600000)/60000);return`${h}小時 ${m}分鐘`}function deleteKey(k){saveKeys(getKeys().filter(x=>x.key!==k));renderKeys()}function clearKeys(){saveKeys([]);renderKeys()}
 function recommendRooms(){const capital=Number(document.getElementById("capital").value);const todayRate=Number(document.getElementById("todayRate").value||0);const monthRate=Number(document.getElementById("monthRate").value||0);const todayBet=Number(document.getElementById("todayBetAmount").value||0);const monthBet=Number(document.getElementById("monthBetAmount").value||0);const style=playStyle.value;if(!capital){formMsg.textContent="請輸入本金";return}formMsg.textContent="";const p=profiles.find(x=>capital>=x.min&&capital<=x.max);const calc=calcBitePull(todayBet,todayRate);capitalTier.textContent=p.tier;mainStrategy.textContent=p.strategy;resultRange.textContent=pad(p.range[0])+" - "+pad(p.range[1]);todayBetResult.textContent=todayBet?format(todayBet):"未輸入";todayRateResult.textContent=rateText(todayRate,"今日");monthRateResult.textContent=rateText(monthRate,"30日");monthBetResult.textContent=monthBet?format(monthBet)+"，樣本量可納入長期判斷":"未輸入";bitePull.textContent=calc.short;todayBitePullResult.textContent=calc.text;formulaText.textContent=calc.formula;renderRooms(p,capital,todayRate,monthRate,todayBet,monthBet,style,calc);saveHistory({time:new Date().toISOString(),capital,tier:p.tier,rooms:"已推薦",strategy:p.strategy,status:calc.short});renderHistory()}
