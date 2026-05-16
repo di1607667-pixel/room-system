@@ -695,6 +695,49 @@ const roomTypes=[
 ];
 let secret=0;
 window.onload=()=>{init();tick();setInterval(tick,1000);const s=getSession();if(s)showMain(s.role,s.key);renderKeys();renderHistory();};
+  setInterval(checkSessionExpire,10000);
+  async function checkSessionExpire(){
+
+  try{
+
+    const session = getSession();
+
+    if(!session) return;
+
+    if(session.role === "master") return;
+
+    const keys = await getCloudKeys();
+
+    const found = keys.find(k =>
+      normalizeKey(k.key) ===
+      normalizeKey(session.key)
+    );
+
+    if(!found){
+
+      alert("金鑰已失效");
+
+      logout();
+
+      return;
+    }
+
+    const expireTime =
+      new Date(found.expiresAt).getTime();
+
+    if(expireTime < Date.now()){
+
+      alert("金鑰已到期，系統將自動登出");
+
+      logout();
+    }
+
+  }catch(err){
+
+    console.error(err);
+
+  }
+}
 function init(){if(!localStorage.getItem(STORAGE_KEYS.keys))localStorage.setItem(STORAGE_KEYS.keys,"[]");if(!localStorage.getItem(STORAGE_KEYS.history))localStorage.setItem(STORAGE_KEYS.history,"[]");}
 function tick(){const c=document.getElementById("clock");if(c)c.textContent="◷ "+new Date().toLocaleString("zh-TW",{hour12:false});}
 function secretMasterFill(){
