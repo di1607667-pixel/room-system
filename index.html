@@ -1,6 +1,44 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBaDZRIclxkGeTPyo7TSjb9Lq3q4P_JvEk",
+  authDomain: "room-system-38cb2.firebaseapp.com",
+  projectId: "room-system-38cb2",
+  storageBucket: "room-system-38cb2.firebasestorage.app",
+  messagingSenderId: "931053826331",
+  appId: "1:931053826331:web:1fc9f93fb0618b8c3463be",
+  measurementId: "G-6HZT0BNVZ0"
+};
+
+const app = initializeApp(firebaseConfig);
+
+const db = getFirestore(app);
+
+window.firebaseDB = db;
+
+window.firebaseTools = {
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc
+};
+
+</script>
+  <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>智能房間分析推薦系統</title>
