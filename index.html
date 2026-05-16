@@ -710,202 +710,228 @@ function secretMasterFill(){
     secret=0;
   }
 }
-function login(){
+function normalizeKey(key){
+  return String(key || "").trim().replace(/\s/g,"").toUpperCase();
+}
+
+async function getCloudKeys(){
+  const db = window.firebaseDB;
+  const tools = window.firebaseTools;
+
+  if(!db || !tools){
+    throw new Error("Firebase 尚未載入完成，請重新整理頁面");
+  }
+
+  const snap = await tools.getDocs(
+    tools.collection(db, "keys")
+  );
+
+  return snap.docs.map(d => ({
+    id: d.id,
+    ...d.data()
+  }));
+}
+
+async function login(){
   try{
-    const input=document.getElementById("loginKey");
-    const msg=document.getElementById("loginMsg");
-
-    if(!input){
-      alert("找不到登入欄位");
-      return;
-    }
-
-    const rawKey=input.value||"";
-    const key=rawKey.trim().replaceAll(" ","").toUpperCase();
-    const master=String(MASTER_KEY||"").trim().toUpperCase();
+    const input = document.getElementById("loginKey");
+    const msg = document.getElementById("loginMsg");
+    const key = normalizeKey(input.value);
+    const master = normalizeKey(MASTER_KEY);
 
     if(!key){
-      msg.textContent="請輸入登入金鑰";
+      msg.textContent = "請輸入登入金鑰";
       return;
     }
 
-    if(key===master){
-      localStorage.setItem(STORAGE_KEYS.session,JSON.stringify({
+    if(key === master){
+      localStorage.setItem(STORAGE_KEYS.session, JSON.stringify({
         role:"master",
         key:"MASTER"
       }));
-
       showMain("master","MASTER");
       return;
     }
 
-    let keys=[];
+    msg.textContent = "正在驗證金鑰...";
 
-    try{
-      keys=JSON.parse(localStorage.getItem(STORAGE_KEYS.keys)||"[]");
-      if(!Array.isArray(keys)) keys=[];
-    }catch(e){
-      keys=[];
-    }
+    const keys = await getCloudKeys();
 
-    const found=keys.find(k=>{
-      const saved=String(k.key||"")
-        .trim()
-        .replaceAll(" ","")
-        .toUpperCase();
-
-      return saved===key;
-    });
+    const found = keys.find(k =>
+      normalizeKey(k.key) === key
+    );
 
     if(!found){
-      msg.textContent="金鑰不存在";
+      msg.textContent = "金鑰不存在";
       return;
     }
 
-    const expireTime=new Date(found.expiresAt).getTime();
+    const expireTime = new Date(found.expiresAt).getTime();
 
-    if(expireTime && expireTime<Date.now()){
-      msg.textContent="金鑰已過期";
+    if(expireTime && expireTime < Date.now()){
+      msg.textContent = "金鑰已過期";
       return;
     }
 
-    localStorage.setItem(STORAGE_KEYS.session,JSON.stringify({
+    localStorage.setItem(STORAGE_KEYS.session, JSON.stringify({
       role:"user",
       key:found.key
     }));
 
-    showMain("user",found.key);
+    showMain("user", found.key);
 
   }catch(err){
     console.error(err);
-    alert("登入發生錯誤："+err.message);
+    alert("登入失敗：" + err.message);
   }
 }
 
-function logout(){localStorage.removeItem(STORAGE_KEYS.session);location.reload()}
+function logout(){
+  localStorage.removeItem(STORAGE_KEYS.session);
+  location.reload();
+}
+
 function showMain(role,key){
   document.getElementById("loginView").classList.add("hidden");
   document.getElementById("mainView").classList.remove("hidden");
-  document.getElementById("adminPanel").classList.toggle("hidden",role!=="master");
-  document.getElementById("userRoleText").textContent=role==="master"?"最高層指揮":"一般使用者";
-  document.getElementById("roleLevelText").textContent=role==="master"?"最高層":"一般使用者";
-  document.getElementById("currentKeyText").textContent=role==="master"?"已隱藏":"••••••••";
+  document.getElementById("adminPanel").classList.toggle("hidden", role !== "master");
+  document.getElementById("userRoleText").textContent = role === "master" ? "最高層指揮" : "一般使用者";
+  document.getElementById("roleLevelText").textContent = role === "master" ? "最高層" : "一般使用者";
+  document.getElementById("currentKeyText").textContent = role === "master" ? "已隱藏" : "••••••••";
 }
-function setSession(v){localStorage.setItem(STORAGE_KEYS.session,JSON.stringify(v))}function getSession(){try{return JSON.parse(localStorage.getItem(STORAGE_KEYS.session))}catch{return null}}
-function getKeys(){
+
+function setSession(v){
+  localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(v));
+}
+
+function getSession(){
   try{
-    const data=JSON.parse(localStorage.getItem(STORAGE_KEYS.keys)||"[]");
-    return Array.isArray(data)?data:[];
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.session));
   }catch{
-    return [];
+    return null;
   }
 }
-function saveKeys(v){localStorage.setItem(STORAGE_KEYS.keys,JSON.stringify(Array.isArray(v)?v:[]))}
-function generateKey(){
 
+function getKeys(){
+  return [];
+}
+
+function saveKeys(v){}
+
+async function generateKey(){
   try{
+    const db = window.firebaseDB;
+    const tools = window.firebaseTools;
 
-    const owner =
-      (document.getElementById("keyOwner")?.value || "未命名")
-      .trim();
+    if(!db || !tools){
+      alert("Firebase 尚未載入完成，請重新整理頁面");
+      return;
+    }
 
-    const dur = Math.max(
-      1,
-      Number(
-        document.getElementById("keyDuration")?.value || 30
-      )
-    );
-
-    const unit =
-      document.getElementById("keyUnit")?.value
-      || "minutes";
+    const owner = (document.getElementById("keyOwner")?.value || "未命名").trim();
+    const dur = Math.max(1, Number(document.getElementById("keyDuration")?.value || 30));
+    const unit = document.getElementById("keyUnit")?.value || "minutes";
 
     let ms = dur * 60000;
-
-    if(unit === "hours"){
-      ms = dur * 3600000;
-    }
-
-    if(unit === "days"){
-      ms = dur * 86400000;
-    }
+    if(unit === "hours") ms = dur * 3600000;
+    if(unit === "days") ms = dur * 86400000;
 
     const key =
       "VIP-" +
-      Math.random()
-        .toString(36)
-        .slice(2,6)
-        .toUpperCase()
-      +
+      Math.random().toString(36).slice(2,6).toUpperCase() +
       "-" +
-      Math.random()
-        .toString(36)
-        .slice(2,6)
-        .toUpperCase();
-
-    const expiresAt =
-      new Date(Date.now() + ms).toISOString();
-
-    let keys = [];
-
-    try{
-
-      keys = JSON.parse(
-        localStorage.getItem(STORAGE_KEYS.keys) || "[]"
-      );
-
-      if(!Array.isArray(keys)){
-        keys = [];
-      }
-
-    }catch(e){
-
-      keys = [];
-
-    }
+      Math.random().toString(36).slice(2,6).toUpperCase();
 
     const newKey = {
-
-      key: key.trim().toUpperCase(),
-
+      key: normalizeKey(key),
       owner,
-
-      expiresAt,
-
-      createdAt:
-        new Date().toISOString()
+      expiresAt: new Date(Date.now() + ms).toISOString(),
+      createdAt: new Date().toISOString()
     };
 
-    keys.push(newKey);
-
-    localStorage.setItem(
-      STORAGE_KEYS.keys,
-      JSON.stringify(keys)
+    await tools.addDoc(
+      tools.collection(db, "keys"),
+      newKey
     );
 
-    const msg =
-      document.getElementById("keyMsg");
+    document.getElementById("keyMsg").innerHTML =
+      `已生成雲端金鑰：<b>${newKey.key}</b>`;
 
-    if(msg){
-
-      msg.innerHTML =
-        `已生成金鑰：<b>${newKey.key}</b>`;
-
-    }
-
-    renderKeys();
+    await renderKeys();
 
   }catch(err){
-
     console.error(err);
-
-    alert(
-      "生成金鑰失敗：" + err.message
-    );
+    alert("生成金鑰失敗：" + err.message);
   }
 }
-function renderKeys(){const t=document.getElementById("keyTable");if(!t)return;const arr=getKeys();if(!arr.length){t.innerHTML='<tr><td colspan="5">尚無金鑰</td></tr>';return}t.innerHTML=arr.map(k=>`<tr><td>${k.key}</td><td>${k.owner}</td><td>${remain(k.expiresAt)}</td><td>${new Date(k.expiresAt).toLocaleString("zh-TW",{hour12:false})}</td><td><button onclick="deleteKey('${k.key}')">刪除</button></td></tr>`).join("")}
-function remain(d){let x=new Date(d)-new Date();if(x<=0)return"已過期";let h=Math.floor(x/3600000),m=Math.floor((x%3600000)/60000);return`${h}小時 ${m}分鐘`}function deleteKey(k){saveKeys(getKeys().filter(x=>x.key!==k));renderKeys()}function clearKeys(){saveKeys([]);renderKeys()}
+
+async function renderKeys(){
+  const table = document.getElementById("keyTable");
+  if(!table) return;
+
+  try{
+    const keys = await getCloudKeys();
+
+    if(!keys.length){
+      table.innerHTML = '<tr><td colspan="5">尚無雲端金鑰</td></tr>';
+      return;
+    }
+
+    table.innerHTML = keys.map(k => `
+      <tr>
+        <td>${k.key}</td>
+        <td>${k.owner || "未命名"}</td>
+        <td>${remain(k.expiresAt)}</td>
+        <td>${new Date(k.expiresAt).toLocaleString("zh-TW",{hour12:false})}</td>
+        <td><button onclick="deleteKey('${k.id}')">刪除</button></td>
+      </tr>
+    `).join("");
+
+  }catch(err){
+    table.innerHTML = `<tr><td colspan="5">讀取雲端金鑰失敗：${err.message}</td></tr>`;
+  }
+}
+
+function remain(d){
+  let x = new Date(d) - new Date();
+  if(x <= 0) return "已過期";
+
+  let h = Math.floor(x / 3600000);
+  let m = Math.floor((x % 3600000) / 60000);
+
+  return `${h}小時 ${m}分鐘`;
+}
+
+async function deleteKey(id){
+  try{
+    const db = window.firebaseDB;
+    const tools = window.firebaseTools;
+
+    await tools.deleteDoc(
+      tools.doc(db, "keys", id)
+    );
+
+    await renderKeys();
+
+  }catch(err){
+    alert("刪除失敗：" + err.message);
+  }
+}
+
+async function clearKeys(){
+  try{
+    const keys = await getCloudKeys();
+
+    for(const k of keys){
+      await deleteKey(k.id);
+    }
+
+    await renderKeys();
+
+  }catch(err){
+    alert("清空失敗：" + err.message);
+  }
+}
 function recommendRooms(){const capital=Number(document.getElementById("capital").value);const todayRate=Number(document.getElementById("todayRate").value||0);const monthRate=Number(document.getElementById("monthRate").value||0);const todayBet=Number(document.getElementById("todayBetAmount").value||0);const monthBet=Number(document.getElementById("monthBetAmount").value||0);const style=playStyle.value;if(!capital){formMsg.textContent="請輸入本金";return}formMsg.textContent="";const p=profiles.find(x=>capital>=x.min&&capital<=x.max);const calc=calcBitePull(todayBet,todayRate);capitalTier.textContent=p.tier;mainStrategy.textContent=p.strategy;resultRange.textContent=pad(p.range[0])+" - "+pad(p.range[1]);todayBetResult.textContent=todayBet?format(todayBet):"未輸入";todayRateResult.textContent=rateText(todayRate,"今日");monthRateResult.textContent=rateText(monthRate,"30日");monthBetResult.textContent=monthBet?format(monthBet)+"，樣本量可納入長期判斷":"未輸入";bitePull.textContent=calc.short;todayBitePullResult.textContent=calc.text;formulaText.textContent=calc.formula;renderRooms(p,capital,todayRate,monthRate,todayBet,monthBet,style,calc);saveHistory({time:new Date().toISOString(),capital,tier:p.tier,rooms:"已推薦",strategy:p.strategy,status:calc.short});renderHistory()}
 function calcBitePull(bet,rate){if(!bet||!rate)return{status:"none",amount:0,short:"未輸入",text:"輸入今日下注金額與今日得分率後，可計算咬分/拉分。",formula:"今日得分 = 今日下注金額 × 今日得分率 ÷ 100；淨分 = 今日得分 − 今日下注金額"};const score=Math.round(bet*rate/100);const net=score-bet;if(net>0)return{status:"pull",amount:net,short:"拉分 +"+format(net),text:"今日得分 "+format(score)+"，目前拉分 "+format(net),formula:`${format(bet)} × ${rate}% = ${format(score)}；${format(score)} - ${format(bet)} = 拉分 ${format(net)}`};if(net<0)return{status:"bite",amount:Math.abs(net),short:"咬分 -"+format(Math.abs(net)),text:"今日得分 "+format(score)+"，目前咬分 "+format(Math.abs(net)),formula:`${format(bet)} × ${rate}% = ${format(score)}；${format(score)} - ${format(bet)} = 咬分 ${format(Math.abs(net))}`};return{status:"flat",amount:0,short:"打平",text:"目前打平",formula:`${format(bet)} × ${rate}% = ${format(score)}；${format(score)} - ${format(bet)} = 0`}}
 function renderRooms(p,capital,todayRate,monthRate,todayBet,monthBet,style,calc){let html="";for(let i=0;i<p.rooms;i++){const r=pad(rand(p.range[0],p.range[1]));const type=roomTypes[i%roomTypes.length];let burst=p.base+(i===2?7:0);if(todayRate>110)burst+=8;if(monthRate>105)burst+=5;if(calc.status==="pull")burst+=4;if(calc.status==="bite")burst-=8;if(style==="burst")burst+=7;if(style==="safe")burst-=5;burst=Math.max(8,Math.min(92,Math.round(burst+rand(-5,6))));const risk=burst>=65?"中高風險":burst>=48?"中風險":"低風險";const cls=burst>=65?"high":burst>=48?"mid":"low";const alloc=Math.round(capital*([.3,.25,.2,.15,.1][i]||.1));const roomNet=calc.status==="pull"?Math.round(calc.amount*(.3-.04*i)):calc.status==="bite"?Math.round(calc.amount*(.3-.04*i)):0;html+=`<div class="room-card"><div class="card-badge">推薦 ${i+1}</div><div class="card-thumb"></div><div class="room-no">房間 ${r}</div><div>爆分率</div><div class="percent">${burst}%</div><div class="risk ${cls}">風險等級 ● ${risk}</div><div class="money">建議配置 ${Math.round((.3-.05*i)*100)}% (${format(alloc)})</div><div class="money ${calc.status==="bite"?"bite":"pull"}">${calc.status==="bite"?"咬分 -":"拉分 +"}${format(roomNet)}</div><div class="small"><b>優勢：</b>${type.adv}<br><b>劣勢：</b>${type.weak}<br><b>分析：</b>${analysis(todayRate,monthRate,calc,burst)}<br><b>公式：</b>${calc.formula}</div></div>`}recommendList.innerHTML=html}
